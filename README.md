@@ -82,33 +82,120 @@ portal-jv/
    docker-compose down
    ```
 
-## Local Development Setup
+## Running Without Docker
+
+### Prerequisites
+1. Java 17 JDK
+2. Maven 3.8+
+3. PostgreSQL 14+
+
+### Installation Steps
 
 1. Install Java 17:
    ```bash
+   # For Ubuntu/Debian:
    sudo apt install -y wget apt-transport-https
    wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo tee /etc/apt/trusted.gpg.d/adoptium.asc
    echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | sudo tee /etc/apt/sources.list.d/adoptium.list
    sudo apt update && sudo apt install -y temurin-17-jdk
+
+   # For macOS (using Homebrew):
+   brew tap adoptopenjdk/openjdk
+   brew install --cask temurin17
+
+   # Verify installation:
+   java -version
    ```
 
-2. Install PostgreSQL:
+2. Install Maven:
    ```bash
-   sudo apt install postgresql postgresql-contrib
+   # For Ubuntu/Debian:
+   sudo apt install maven
+
+   # For macOS:
+   brew install maven
+
+   # Verify installation:
+   mvn -version
    ```
 
-3. Create database:
+3. Install PostgreSQL:
+   ```bash
+   # For Ubuntu/Debian:
+   sudo apt install postgresql postgresql-contrib
+
+   # For macOS:
+   brew install postgresql
+   brew services start postgresql
+   ```
+
+4. Create database and user:
    ```bash
    sudo -u postgres psql
+
+   # In psql console:
    CREATE DATABASE employee_portal;
+   CREATE USER portal_user WITH PASSWORD 'your_password';
+   GRANT ALL PRIVILEGES ON DATABASE employee_portal TO portal_user;
    \q
    ```
 
-4. Build and run the application:
+5. Configure application:
+   Create `src/main/resources/application.yml` with:
+   ```yaml
+   spring:
+     datasource:
+       url: jdbc:postgresql://localhost:5432/employee_portal
+       username: portal_user
+       password: your_password
+     jpa:
+       hibernate:
+         ddl-auto: update
+       show-sql: true
+   ```
+
+6. Build the application:
    ```bash
+   # Clean and install dependencies
    mvn clean install
+
+   # Run tests (optional)
+   mvn test
+   ```
+
+7. Run the application:
+   ```bash
+   mvn spring-boot:run
+   # OR
    java -jar target/portal-jv-1.0-SNAPSHOT.jar
    ```
+
+8. Access the application:
+   Open your browser and navigate to `http://localhost:8080`
+
+   Login with:
+   - Admin: admin@portal.com / admin123
+   - User: user@portal.com / user123
+
+### Common Issues and Solutions
+
+1. Database Connection:
+   - Ensure PostgreSQL is running: `sudo service postgresql status`
+   - Check connection: `psql -U portal_user -d employee_portal -h localhost`
+
+2. Port Already in Use:
+   - Check what's using port 8080: `sudo lsof -i :8080`
+   - Kill the process: `sudo kill -9 <PID>`
+   - Or change the port in application.yml:
+     ```yaml
+     server:
+       port: 8081
+     ```
+
+3. Maven Build Issues:
+   - Clear Maven cache: `mvn clean`
+   - Update dependencies: `mvn dependency:purge-local-repository`
+   - Skip tests: `mvn clean install -DskipTests`
 
 ## Environment Variables
 
